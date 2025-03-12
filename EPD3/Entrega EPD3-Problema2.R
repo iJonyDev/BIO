@@ -1,3 +1,4 @@
+dir <- getwd() # Directorio de trabajo
 # Lee el archivo tomando la primera fila como encabezado.
 dataset_p2 <- read.table("/Users/jonathanquishpe/Documents/BIO/GSE290268_RNAseq_FPKM_data.txt", 
                    sep = "\t", 
