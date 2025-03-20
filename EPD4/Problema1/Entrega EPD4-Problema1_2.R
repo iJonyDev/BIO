@@ -1,162 +1,54 @@
-# ---- Preprocesamiento de los datos ----
+# ---------- Identificación de Outliers en RNA-Seq -----------
+# Calcular el rango intercuartílico (IQR) para cada gen
+iqr_values <- apply(dgeObj$counts, 1, IQR)
 
-# Crear una lista con las variables de interés sin preprocesar
-data_no_preprocessed <- datos_recodificados
+# Calcular los cuartiles (Q1 y Q3) para cada gen
+q1_values <- apply(dgeObj$counts, 1, quantile, probs = 0.25)
+q3_values <- apply(dgeObj$counts, 1, quantile, probs = 0.75)
 
+# Definir los límites para outliers leves y extremos
+leveDown <- q1_values - 1.5 * iqr_values
+leveUp <- q3_values + 1.5 * iqr_values
+extremeDown <- q1_values - 3 * iqr_values
+extremeUp <- q3_values + 3 * iqr_values
 
-#####################################################
-#### Procesado Tipo: Transformación Escala ##########
-#####################################################
-library(caret)
-tipo_preprocesamiento <- "Transfomacion Escala"
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("scale")) # Transmacion por escala
-  transformed <- predict(params, var_df) # Transformar los datos 
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# Identificar outliers en los recuentos de genes
+outliers_leves <- dgeObj$counts < leveDown | dgeObj$counts > leveUp
+outliers_extremos <- dgeObj$counts < extremeDown | dgeObj$counts > extremeUp
 
-#####################################################
-#### Procesado Tipo: Transformación Central #########
-#####################################################
-library(caret)
-tipo_preprocesamiento <- "Transf.Central"
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("center")) # Transmacion central
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# Resumen de outliers
+cat("Número de outliers leves por gen:\n")
+print(rowSums(outliers_leves[1:10,])) # Mostrar solo los primeros 10 genes
 
-################################################################
-#### Procesado Tipo: Transformación de Estandarizacion #########
-################################################################
-library(caret)
-tipo_preprocesamiento <- "Transf.Estandarizacion "
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("center", "scale")) # Transmacion por estandarizacion
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+cat("Número de outliers extremos por gen:\n")
+print(rowSums(outliers_extremos[1:10,])) # Mostrar solo los primeros 10 genes
 
-################################################################
-#### Procesado Tipo: Transformación de Normalizacion ###########
-################################################################
-library(caret)
-tipo_preprocesamiento <- "Transf.Normalizacion "
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("range")) # Transmacion de normalizacion
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# ------------- Recodificar los valores atípicos (outliers)  ------------
+# Crear una copia de los recuentos para recodificar los outliers
+counts_recodificados <- dgeObj$counts
 
-################################################################
-######## Procesado Tipo: Transformación de Box-Cox #############
-################################################################
-library(mlbench)
-library(caret)
-tipo_preprocesamiento <- "Transf.Box-Cox "
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("BoxCox")) # Transmacion de BoxCox
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# Recodificar outliers leves como NA
+counts_recodificados[outliers_leves] <- NA
 
-################################################################
-###### Procesado Tipo: Transformación de Yeo-Johnson ###########
-################################################################
-library(mlbench)
-library(caret)
-tipo_preprocesamiento <- "Transf.Yeo-Johnson "
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("YeoJohnson")) # Transmacion de Yeo-Johnson
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# Recodificar outliers extremos como NA
+counts_recodificados[outliers_extremos] <- NA
 
-################################################################
-########## Procesado Tipo: Transformación PCA ##################
-################################################################
-library(mlbench)
-tipo_preprocesamiento <- "Transf.PCA " # Análisis de Componentes Principales
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("center", "scale", "pca")) # Transmacion de PCA
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# Actualizar el objeto DGEList con los recuentos recodificados
+dgeObjRecodificado <- dgeObj
+dgeObjRecodificado$counts <- counts_recodificados
 
-################################################################
-########## Procesado Tipo: Transformación ICA ##################
-################################################################
-library(mlbench)
-library(caret)
-library(fastICA)
-tipo_preprocesamiento <- "Transf.ICA " # Analisis de Componentes Independientes
-# Procesar todas las variables a la vez usando lapply
-preprocessed_results <- lapply(data_no_preprocessed, function(variable) {
-  var_df <- data.frame(x = variable) # Crear un data frame con la variable de interés
-  # La transformación scale calcula la desviación estándar de un atributo
-  # y divide cada valor por esa desviación estándar.
-  params <- preProcess(var_df, method=c("center", "scale", "ica"), n.comp=5) # Transmacion de ICA
-  transformed <- predict(params, var_df) # Transformar los datos
-  # Devolver los parámetros y los datos transformados
-  return(list(
-    params = params,
-    transformed = transformed$x
-  ))
-})
+# Resumen de los recuentos recodificados
+cat("\n----- Resumen de Recuentos Recodificados -----\n")
+print(summary(counts_recodificados))
 
+# ------------- Eliminar outliers de los recuentos de genes ------------
+# Eliminar valores NA de los recuentos recodificados
+counts_sin_outliers <- na.omit(dgeObjRecodificado$counts)
+
+# Actualizar el objeto DGEList con los recuentos sin outliers
+dgeObjSinOutliers <- dgeObj
+dgeObjSinOutliers$counts <- counts_sin_outliers
+
+# Resumen de los recuentos sin outliers
+cat("\n----- Resumen de Recuentos sin Outliers -----\n")
+print(summary(counts_sin_outliers))

@@ -31,7 +31,7 @@ str(dataset) # Estructura del dataframe despues de la conversion
 
 
 
-#-------------- Resumen variables de interés --------------
+#-------------- Seleccionar variables de interés --------------
 
 # Crear un data frame con las variables de interés
 datos <- data.frame(
@@ -75,6 +75,7 @@ boxplot(datos, main="Boxplot",
 
 # Resumen con estadisticas de las variables de interés
 summary(datos) 
+
 
 # ----- Identificar valores atípicos (outliers) -----
 # Obtener cuantitativamente el rango intercuantílico (IQR) 
